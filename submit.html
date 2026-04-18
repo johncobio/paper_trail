@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // submit</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">hide a message inside a file and post the result</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <div id="gate"></div>
+
+  <form id="f" class="box" style="display:none">
+    <label>title <span class="hint">shown on the board</span></label>
+    <input type="text" id="title" required maxlength="80">
+
+    <label>public note <span class="hint">optional, anyone can read this</span></label>
+    <textarea id="note" maxlength="300"></textarea>
+
+    <label>carrier file P <span class="hint">the file that shows on the board</span></label>
+    <input type="file" id="carrier" required>
+
+    <label>message source</label>
+    <select id="msrc">
+      <option value="text">type a text message</option>
+      <option value="file">upload a file as the message</option>
+    </select>
+
+    <div id="mTextWrap">
+      <label>secret message M</label>
+      <textarea id="mtext" placeholder="the thing only people with S, L, C can read"></textarea>
+    </div>
+    <div id="mFileWrap" style="display:none">
+      <label>message file</label>
+      <input type="file" id="mfile">
+    </div>
+
+    <hr>
+    <div class="row">
+      <div>
+        <label>S <span class="hint">skip bits</span></label>
+        <input type="number" id="S" value="64" min="0" required>
+      </div>
+      <div>
+        <label>L <span class="hint">period (bits)</span></label>
+        <input type="number" id="L" value="8" min="1" required>
+      </div>
+      <div>
+        <label>C <span class="hint">mode</span></label>
+        <select id="C">
+          <option value="0">0 &mdash; flat (step = L)</option>
+          <option value="1">1 &mdash; ramp (cycle L, 2L, 4L, 2L)</option>
+          <option value="2">2 &mdash; fib (L * fibonacci)</option>
+          <option value="3">3 &mdash; prime (L * nth prime)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <button type="submit">embed + post</button>
+      <button type="button" id="dl" class="ghost">embed + download only</button>
+    </div>
+    <div id="out"></div>
+
+    <p style="color:var(--ink-soft);font-size:12px;margin-top:18px">
+      S, L, C are <strong>not</strong> stored in the post. you have to share them with whoever
+      you want to be able to extract the message. that's sort of the point.
+    </p>
+  </form>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/board.js"></script>
+<script src="js/stego.js"></script>
+<script>
+const { $, escapeHTML, humanBytes, renderNav, readFileBytes, downloadBytes } = PT.util;
+renderNav("submit");
+
+const user = PT.auth.currentUser();
+if (!user) {
+  $("#gate").innerHTML =
+    `<div class="msg warn">you need to be logged in to submit.
+     <a href="login.html">log in</a> or <a href="register.html">register</a>.</div>`;
+} else {
+  $("#f").style.display = "";
+}
+
+$("#msrc").onchange = () => {
+  const v = $("#msrc").value;
+  $("#mTextWrap").style.display = v === "text" ? "" : "none";
+  $("#mFileWrap").style.display = v === "file" ? "" : "none";
+};
+
+async function buildStego() {
+  const carrierFile = $("#carrier").files[0];
+  if (!carrierFile) throw new Error("pick a carrier file");
+  const carrierBytes = await readFileBytes(carrierFile);
+
+  let mBytes, mName = "message.bin";
+  if ($("#msrc").value === "text") {
+    const txt = $("#mtext").value;
+    if (!txt) throw new Error("type a message, or switch to file");
+    mBytes = new TextEncoder().encode(txt);
+    mName = "message.txt";
+  } else {
+    const mf = $("#mfile").files[0];
+    if (!mf) throw new Error("pick a message file");
+    mBytes = await readFileBytes(mf);
+    mName = mf.name;
+  }
+
+  const S = parseInt($("#S").value, 10);
+  const L = parseInt($("#L").value, 10);
+  const C = parseInt($("#C").value, 10);
+
+  const cap = PT.stego.capacityBytes(carrierBytes.length, S, L, C);
+  if (mBytes.length > cap) {
+    throw new Error(
+      `message is ${mBytes.length}B but carrier can only hold ~${cap}B ` +
+      `with these parameters. pick a bigger carrier or a smaller L.`
+    );
+  }
+
+  const out = PT.stego.embed(carrierBytes, mBytes, S, L, C);
+  return { out, carrierFile, mName, S, L, C };
+}
+
+$("#f").onsubmit = async (e) => {
+  e.preventDefault();
+  const out = $("#out");
+  out.innerHTML = `<div class="msg">working...</div>`;
+  try {
+    const { out: stego, carrierFile } = await buildStego();
+    const mime = carrierFile.type || "application/octet-stream";
+    const dataUrl = PT.board.bytesToDataURL(stego, mime);
+    PT.board.addPost({
+      user,
+      title: $("#title").value,
+      note: $("#note").value,
+      filename: carrierFile.name,
+      mime,
+      size: stego.length,
+      dataUrl
+    });
+    out.innerHTML = `<div class="msg ok">posted. <a href="index.html">back to board</a>.</div>`;
+    $("#f").reset();
+    $("#msrc").onchange();
+  } catch (err) {
+    out.innerHTML = `<div class="msg err">${escapeHTML(err.message)}</div>`;
+  }
+};
+
+$("#dl").onclick = async () => {
+  const out = $("#out");
+  out.innerHTML = "";
+  try {
+    const { out: stego, carrierFile } = await buildStego();
+    downloadBytes(stego, "stego_" + carrierFile.name, carrierFile.type);
+    out.innerHTML = `<div class="msg ok">file saved.</div>`;
+  } catch (err) {
+    out.innerHTML = `<div class="msg err">${escapeHTML(err.message)}</div>`;
+  }
+};
+</script>
+</body>
+</html>

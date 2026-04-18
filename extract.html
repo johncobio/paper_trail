@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // extract</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">pull a hidden message back out</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <p style="color:var(--ink-soft);font-size:13px">
+    no login required here. you need the file plus the S, L, C used to embed.
+  </p>
+
+  <form id="f" class="box">
+    <label>source</label>
+    <select id="src">
+      <option value="upload">upload a file</option>
+      <option value="board">pick a post from the board</option>
+    </select>
+
+    <div id="uploadWrap">
+      <label>stego file</label>
+      <input type="file" id="file">
+    </div>
+
+    <div id="boardWrap" style="display:none">
+      <label>post</label>
+      <select id="post"></select>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>S</label>
+        <input type="number" id="S" value="64" min="0" required>
+      </div>
+      <div>
+        <label>L</label>
+        <input type="number" id="L" value="8" min="1" required>
+      </div>
+      <div>
+        <label>C</label>
+        <select id="C">
+          <option value="0">0 &mdash; flat</option>
+          <option value="1">1 &mdash; ramp</option>
+          <option value="2">2 &mdash; fib</option>
+          <option value="3">3 &mdash; prime</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <button type="submit">extract</button>
+    </div>
+    <div id="out"></div>
+  </form>
+
+  <div id="result"></div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/board.js"></script>
+<script src="js/stego.js"></script>
+<script>
+const { $, escapeHTML, renderNav, readFileBytes, downloadBytes } = PT.util;
+renderNav("extract");
+
+function populatePosts() {
+  const sel = $("#post");
+  const posts = PT.board.getPosts();
+  if (!posts.length) {
+    sel.innerHTML = `<option value="">(no posts yet)</option>`;
+    return;
+  }
+  sel.innerHTML = posts.map(p =>
+    `<option value="${p.id}">${escapeHTML(p.title || "(untitled)")} &mdash; ${escapeHTML(p.user)}</option>`
+  ).join("");
+}
+populatePosts();
+
+$("#src").onchange = () => {
+  const v = $("#src").value;
+  $("#uploadWrap").style.display = v === "upload" ? "" : "none";
+  $("#boardWrap").style.display = v === "board" ? "" : "none";
+};
+
+$("#f").onsubmit = async (e) => {
+  e.preventDefault();
+  const out = $("#out");
+  const res = $("#result");
+  out.innerHTML = `<div class="msg">working...</div>`;
+  res.innerHTML = "";
+  try {
+    let bytes;
+    if ($("#src").value === "upload") {
+      const f = $("#file").files[0];
+      if (!f) throw new Error("pick a file");
+      bytes = await readFileBytes(f);
+    } else {
+      const id = $("#post").value;
+      if (!id) throw new Error("no post selected");
+      const p = PT.board.getPost(id);
+      if (!p) throw new Error("post vanished");
+      bytes = PT.board.dataURLToBytes(p.dataUrl);
+    }
+    const S = parseInt($("#S").value, 10);
+    const L = parseInt($("#L").value, 10);
+    const C = parseInt($("#C").value, 10);
+
+    const msg = PT.stego.extract(bytes, S, L, C);
+
+    // try to show as text if it looks printable
+    let asText = "";
+    let printable = true;
+    try {
+      asText = new TextDecoder("utf-8", { fatal: true }).decode(msg);
+      // also reject if mostly control chars
+      let nonprint = 0;
+      for (let i = 0; i < asText.length; i++) {
+        const c = asText.charCodeAt(i);
+        if (c < 9 || (c > 13 && c < 32)) nonprint++;
+      }
+      if (nonprint / Math.max(1, asText.length) > 0.05) printable = false;
+    } catch { printable = false; }
+
+    out.innerHTML = `<div class="msg ok">extracted ${msg.length} bytes</div>`;
+    res.innerHTML = `
+      <h2>recovered message</h2>
+      ${printable
+        ? `<pre>${escapeHTML(asText)}</pre>`
+        : `<p>looks like binary data. use the download link below.</p>`}
+      <p><a href="#" id="dl">download as file</a></p>
+    `;
+    $("#dl").onclick = (ev) => {
+      ev.preventDefault();
+      downloadBytes(msg, "recovered.bin");
+    };
+  } catch (err) {
+    out.innerHTML = `<div class="msg err">${escapeHTML(err.message)}</div>`;
+  }
+};
+</script>
+</body>
+</html>

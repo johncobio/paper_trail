@@ -1,0 +1,185 @@
+/* paper_trail - intentionally kept simple + typewriter looking.
+   i don't like how most web apps look the same, this is just plain
+   courier on cream with square borders. */
+
+:root {
+  --bg: #f4efe4;
+  --ink: #1a1a1a;
+  --ink-soft: #555;
+  --rule: #1a1a1a;
+  --accent: #8c2a1f;
+  --warn: #8a5a00;
+  --panel: #fbf8f0;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Courier New", Courier, monospace;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.wrap {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 24px 18px 80px;
+}
+
+/* header */
+header.masthead {
+  border-bottom: 2px solid var(--rule);
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+}
+header.masthead h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: 2px;
+}
+header.masthead .sub {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-top: 2px;
+}
+nav#nav {
+  border-bottom: 1px solid var(--rule);
+  padding: 6px 0 8px;
+  margin-bottom: 22px;
+  font-size: 14px;
+}
+nav#nav a {
+  color: var(--ink);
+  text-decoration: none;
+  padding: 0 2px;
+}
+nav#nav a:hover { text-decoration: underline; }
+nav#nav a.on { color: var(--accent); font-weight: bold; }
+nav#nav .who { color: var(--ink-soft); margin-left: 6px; }
+
+/* forms */
+form.box {
+  border: 1px solid var(--rule);
+  padding: 16px 18px;
+  background: var(--panel);
+  margin: 14px 0 22px;
+}
+label { display: block; margin: 10px 0 4px; font-weight: bold; }
+label .hint { font-weight: normal; color: var(--ink-soft); margin-left: 6px; font-size: 12px; }
+input[type=text], input[type=password], input[type=number], textarea, select {
+  width: 100%;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 14px;
+  border: 1px solid var(--rule);
+  background: #fff;
+  border-radius: 0;
+}
+textarea { min-height: 90px; resize: vertical; }
+input[type=file] { font-family: inherit; font-size: 13px; }
+
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.row > * { flex: 1 1 120px; }
+
+button, .btn {
+  display: inline-block;
+  padding: 7px 14px;
+  font-family: inherit;
+  font-size: 14px;
+  background: var(--ink);
+  color: var(--bg);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  border-radius: 0;
+  text-decoration: none;
+}
+button:hover, .btn:hover { background: var(--accent); border-color: var(--accent); }
+button.ghost {
+  background: var(--bg); color: var(--ink);
+}
+button.ghost:hover { color: var(--bg); }
+
+.msg { margin: 10px 0; padding: 8px 10px; border: 1px solid var(--rule); background: #fff; }
+.msg.err { border-color: var(--accent); color: var(--accent); }
+.msg.ok { border-color: #2e6b2e; color: #2e6b2e; }
+.msg.warn { border-color: var(--warn); color: var(--warn); }
+
+/* board */
+.posts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+.post {
+  border: 1px solid var(--rule);
+  background: var(--panel);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 150px;
+}
+.post .pic {
+  border: 1px solid var(--rule);
+  margin-bottom: 6px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 130px;
+  max-height: 200px;
+  overflow: hidden;
+}
+.post .pic img {
+  max-width: 100%;
+  max-height: 200px;
+  display: block;
+}
+.post .pic .nopic {
+  padding: 18px;
+  color: var(--ink-soft);
+  font-size: 12px;
+  text-align: center;
+}
+.post .ttl { font-weight: bold; }
+.post .meta { color: var(--ink-soft); font-size: 12px; margin-top: auto; }
+.post .note { font-size: 13px; margin: 4px 0; white-space: pre-wrap; }
+
+/* misc */
+h2 { margin-top: 26px; font-size: 18px; border-bottom: 1px solid var(--rule); padding-bottom: 4px; }
+h3 { margin-top: 18px; font-size: 16px; }
+code {
+  background: #e8e1d0;
+  padding: 1px 5px;
+  border: 1px solid #d6cfbd;
+  font-size: 13px;
+}
+pre {
+  background: #e8e1d0;
+  border: 1px solid #d6cfbd;
+  padding: 10px;
+  overflow-x: auto;
+  font-size: 13px;
+}
+a { color: var(--accent); }
+hr { border: none; border-top: 1px dashed var(--rule); margin: 18px 0; }
+
+footer.foot {
+  border-top: 1px solid var(--rule);
+  margin-top: 40px;
+  padding-top: 8px;
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+
+.flag {
+  display: inline-block;
+  border: 1px solid var(--rule);
+  padding: 1px 6px;
+  font-size: 11px;
+  background: #fff;
+  letter-spacing: 1px;
+}

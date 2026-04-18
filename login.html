@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // login</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">login</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <form id="f" class="box" style="max-width:420px">
+    <label>username</label>
+    <input type="text" id="u" autocomplete="username" required>
+    <label>password</label>
+    <input type="password" id="p" autocomplete="current-password" required>
+    <div style="margin-top:14px">
+      <button type="submit">log in</button>
+      <a href="register.html" style="margin-left:10px">no account yet?</a>
+    </div>
+    <div id="out"></div>
+  </form>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const { $, renderNav, escapeHTML } = PT.util;
+  renderNav("login");
+  if (PT.auth.currentUser()) {
+    location.href = "index.html";
+  }
+  $("#f").onsubmit = async (e) => {
+    e.preventDefault();
+    const out = $("#out");
+    out.innerHTML = "";
+    try {
+      await PT.auth.loginUser($("#u").value, $("#p").value);
+      location.href = "submit.html";
+    } catch (err) {
+      out.innerHTML = `<div class="msg err">${escapeHTML(err.message)}</div>`;
+    }
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // about</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">about this thing</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <p>
+    programming assignment for CSE 5381/4381 (Information Security II, spring 2026).
+    it's a small web app that hides a message inside a carrier file using bit-periodic
+    steganography, and shows the result on a public board.
+  </p>
+
+  <h2>how the embedding works</h2>
+  <p>
+    given a carrier <code>P</code>, a message <code>M</code>, a skip <code>S</code>, a
+    period <code>L</code>, and a mode <code>C</code>:
+  </p>
+  <ol>
+    <li>prepend a 32-bit big-endian length to <code>M</code> so the extractor knows where
+    to stop. call the whole thing the <em>payload</em>.</li>
+    <li>walk over <code>P</code> bit by bit starting at bit index <code>S</code>. every
+    step, overwrite <code>P</code>'s current bit with the next payload bit and jump ahead
+    by <code>step(i, L, C)</code>.</li>
+    <li>the step function depends on mode:
+      <ul>
+        <li><code>C=0</code> flat &mdash; step is always <code>L</code></li>
+        <li><code>C=1</code> ramp &mdash; step cycles through <code>[L, 2L, 4L, 2L]</code></li>
+        <li><code>C=2</code> fib &mdash; step = <code>L * fib(i)</code></li>
+        <li><code>C=3</code> prime &mdash; step = <code>L * prime(i)</code></li>
+      </ul>
+    </li>
+    <li>extracting is the exact same walk, but we <em>read</em> the bits at those positions
+    instead of writing them. the 32-bit length prefix tells us when to stop.</li>
+  </ol>
+
+  <h2>capacity</h2>
+  <p>
+    with flat mode the carrier fits about <code>(LenP - S) / (8 * L)</code> bytes. with the
+    other modes the step grows faster so capacity shrinks &mdash; fib and prime modes are
+    meant for short messages in a large carrier.
+  </p>
+
+  <h2>security caveats</h2>
+  <p>
+    this is a class demo. it is <strong>not</strong> strong steganography:
+  </p>
+  <ul>
+    <li>raw LSB-style overwrites on a JPEG/PNG byte stream will corrupt the image structure.
+    for image carriers, pick <code>S</code> that lands after the header and use a format
+    whose byte stream tolerates random flips (raw <code>.bmp</code> or <code>.wav</code>
+    work best). for the board preview, smaller <code>L</code> and an uncompressed format
+    keep the image viewable.</li>
+    <li>statistical tests can detect LSB-style modulation pretty easily. there's no attempt
+    to match carrier statistics.</li>
+    <li>the auth is localStorage-only because GitHub Pages can't run a backend. see the
+    README for how i'd do it differently with a real server.</li>
+  </ul>
+
+  <p><a href="writeup.html">writeup: finding M or P given only L &rarr;</a></p>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script>PT.util.renderNav("about");</script>
+</body>
+</html>

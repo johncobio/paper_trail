@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // writeup</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">writeup &mdash; finding M or P given only L</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <p class="flag">CSE 5381 / A3 / spring 2026</p>
+
+  <h2>the question</h2>
+  <p>
+    the assignment asks how someone could find <code>M</code> or <code>P</code> given
+    only <code>L</code> (the periodicity). the attacker is assumed to have the stego
+    file <code>P'</code> (the modified carrier), and knows the period <code>L</code>
+    but not the starting skip <code>S</code>, not the mode <code>C</code>, and not the
+    original <code>P</code> or <code>M</code>.
+  </p>
+
+  <h2>what knowing only L gives you</h2>
+  <p>
+    not a lot on its own. <code>L</code> only tells you the <em>spacing</em> between
+    carrier bits that got overwritten. the attacker still has to guess:
+  </p>
+  <ul>
+    <li><code>S</code>, the starting bit offset (typically 0..a few thousand for common
+    file formats, so probably <code>&lt; 2^16</code> candidates if you assume a reasonable
+    upper bound)</li>
+    <li><code>C</code>, the mode (only a handful in this implementation, so basically free)</li>
+    <li>the payload itself, which could be anything</li>
+  </ul>
+
+  <h2>attacks</h2>
+
+  <h3>1. brute force on S and C</h3>
+  <p>
+    since <code>C</code> is small and <code>S</code> is bounded by the carrier size,
+    the attacker can just try each <code>(S, C)</code> pair, read the first 32 bits at
+    the implied positions, and treat them as the message-length header. most guesses
+    produce a "length" that is either larger than the carrier or is clearly nonsense
+    (e.g. length bytes where the high-order byte is non-zero but the carrier is 2MB).
+    only plausible lengths survive, and those are much fewer than the raw
+    <code>S * |C|</code> space.
+  </p>
+  <p>
+    after filtering, the attacker reads the candidate <code>M</code> and runs sanity
+    checks: does it start with a known magic number (<code>FF D8</code> for JPEG,
+    <code>%PDF</code>, <code>PK\x03\x04</code> for zip, UTF-8 text with reasonable
+    entropy, etc.). this is very effective when <code>M</code> has structure.
+  </p>
+
+  <h3>2. use the carrier's own format as a crib</h3>
+  <p>
+    if <code>P</code> is a known format (PNG, BMP, WAV), the attacker knows which bits
+    inside a byte can vary without breaking the file (the LSBs of image pixel bytes,
+    for instance). looking at <code>P'</code>, the <em>locations where LSBs differ
+    from what a natural image would have</em> stand out. with a period <code>L</code>
+    you'd specifically look at every <code>L</code>-th bit and test whether those bits
+    have a different distribution (e.g. closer to 50/50 random) than surrounding bits.
+    chi-square on bit positions modulo <code>L</code> is a one-liner detector.
+  </p>
+
+  <h3>3. two-file attack (known/chosen carrier)</h3>
+  <p>
+    if the attacker can get both <code>P'</code> and a copy of the original <code>P</code>
+    (e.g. the sender used a stock photo), the bits that differ <em>are</em> the message
+    bits, in order. the attacker doesn't even need <code>L</code>: they XOR
+    <code>P ⊕ P'</code>, take every non-zero-bit position, and those bits are
+    <code>M</code>. <code>L</code> only matters if <code>P</code> is unknown.
+  </p>
+
+  <h3>4. structural holes in the scheme</h3>
+  <p>
+    with <code>C=0</code> (flat mode), the set of touched bits is an arithmetic
+    progression. this is a <em>strong</em> fingerprint. any periodic anomaly at
+    spacing <code>L</code> screams "stego here". modes 1&ndash;3 help a little
+    because they break periodicity, but they do it deterministically &mdash; once
+    <code>C</code> is guessed, the positions are fixed. a real defense would need a
+    keyed, data-dependent schedule (e.g. HMAC-drive position PRNG), which this
+    assignment's scheme does not have.
+  </p>
+
+  <h2>finding M specifically</h2>
+  <p>
+    in short: <code>L</code> alone narrows the attack a lot but doesn't solve it.
+    the attacker still has to search <code>S</code> and <code>C</code>, and recognize
+    <code>M</code> by its format or statistics. if <code>M</code> is encrypted before
+    embedding, finding it even with all of <code>S, L, C</code> is just as hard as
+    breaking the cipher &mdash; which is the standard recommendation: always encrypt
+    <code>M</code> before stego.
+  </p>
+
+  <h2>finding P specifically</h2>
+  <p>
+    <code>P</code> is only recoverable up to the bits that were overwritten. with
+    <code>L</code>, the attacker knows <em>which</em> bits (once they guess
+    <code>S, C</code>) are no longer original &mdash; those are lost. if
+    <code>P</code> came from a known source (a public image, a known audio file),
+    the attacker can just look up the original. otherwise, the 1/<code>L</code>
+    fraction of bits that were rewritten are gone.
+  </p>
+
+  <h2>references i used</h2>
+  <ul>
+    <li>Hopper, Langford, von Ahn. <em>Provably Secure Steganography</em>. CRYPTO 2002
+    (linked in the assignment)</li>
+    <li>Fridrich et al, <em>Detecting LSB steganography in color and gray-scale images</em>,
+    IEEE Multimedia 2001 &mdash; where the chi-square detector comes from</li>
+    <li>the WIRED steganography primer and null-byte posts linked in the assignment</li>
+    <li>MDN docs for <code>SubtleCrypto.deriveBits</code> and <code>FileReader</code></li>
+  </ul>
+
+  <p><a href="index.html">&larr; back to the board</a></p>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script>PT.util.renderNav("about");</script>
+</body>
+</html>

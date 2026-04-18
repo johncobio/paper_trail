@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // board</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">a quiet board. nothing here is ever <em>only</em> what it looks like.</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <p style="color:var(--ink-soft);font-size:13px;margin-top:0">
+    anyone can browse. to post, you need an account. posts are kept in your browser only
+    (no server) &mdash; this is a class demo.
+  </p>
+
+  <div id="board"></div>
+
+  <footer class="foot">
+    <div>paper_trail &mdash; CSE 5381 A3, spring 2026. see <a href="about.html">about</a>.</div>
+  </footer>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/board.js"></script>
+<script>
+  const { $, escapeHTML, humanDate, renderNav } = PT.util;
+  renderNav("board");
+
+  function render() {
+    const posts = PT.board.getPosts();
+    const el = $("#board");
+    if (!posts.length) {
+      el.innerHTML = `<div class="msg">nothing posted yet. if you have an account,
+        <a href="submit.html">drop something</a>.</div>`;
+      return;
+    }
+    const me = PT.auth.currentUser();
+    el.innerHTML = `<div class="posts">` + posts.map(p => {
+      const pic = (p.mime && p.mime.startsWith("image/"))
+        ? `<div class="pic"><img src="${p.dataUrl}" alt=""></div>`
+        : `<div class="pic"><div class="nopic">[ ${escapeHTML(p.mime || "binary")} ]<br>${escapeHTML(p.filename || "")}</div></div>`;
+      const canDel = me && me === p.user;
+      return `
+        <div class="post">
+          ${pic}
+          <div class="ttl">${escapeHTML(p.title || "(untitled)")}</div>
+          ${p.note ? `<div class="note">${escapeHTML(p.note)}</div>` : ""}
+          <div class="meta">
+            by ${escapeHTML(p.user)} &middot; ${humanDate(p.ts)}
+            &middot; <a href="${p.dataUrl}" download="${escapeHTML(p.filename || "carrier.bin")}">download</a>
+            ${canDel ? `&middot; <a href="#" data-del="${p.id}">delete</a>` : ""}
+          </div>
+        </div>`;
+    }).join("") + `</div>`;
+
+    el.querySelectorAll("[data-del]").forEach(a => {
+      a.onclick = (e) => {
+        e.preventDefault();
+        if (confirm("delete this post?")) {
+          PT.board.deletePost(a.dataset.del);
+          render();
+        }
+      };
+    });
+  }
+  render();
+</script>
+</body>
+</html>

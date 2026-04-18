@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>paper_trail // register</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <h1>paper_trail</h1>
+    <div class="sub">make an account</div>
+  </header>
+  <nav id="nav"></nav>
+
+  <form id="f" class="box" style="max-width:420px">
+    <label>username <span class="hint">3-24 chars, a-z 0-9 _ -</span></label>
+    <input type="text" id="u" autocomplete="username" required>
+    <label>password <span class="hint">6+ chars</span></label>
+    <input type="password" id="p" autocomplete="new-password" required>
+    <label>password (again)</label>
+    <input type="password" id="p2" autocomplete="new-password" required>
+    <div style="margin-top:14px">
+      <button type="submit">register</button>
+      <a href="login.html" style="margin-left:10px">already have one</a>
+    </div>
+    <div id="out"></div>
+    <p style="color:var(--ink-soft);font-size:12px;margin-top:14px">
+      accounts live in this browser's localStorage &mdash; no server is doing anything
+      with your password. the hash uses PBKDF2-SHA256 so casual snooping won't recover it,
+      but don't reuse a real password here.
+    </p>
+  </form>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/auth.js"></script>
+<script>
+  const { $, renderNav, escapeHTML } = PT.util;
+  renderNav("register");
+  $("#f").onsubmit = async (e) => {
+    e.preventDefault();
+    const out = $("#out");
+    out.innerHTML = "";
+    const u = $("#u").value, p = $("#p").value, p2 = $("#p2").value;
+    if (p !== p2) {
+      out.innerHTML = `<div class="msg err">passwords don't match</div>`;
+      return;
+    }
+    try {
+      await PT.auth.registerUser(u, p);
+      await PT.auth.loginUser(u, p);
+      location.href = "submit.html";
+    } catch (err) {
+      out.innerHTML = `<div class="msg err">${escapeHTML(err.message)}</div>`;
+    }
+  };
+</script>
+</body>
+</html>
