@@ -7,6 +7,8 @@ A small static web app that hides a message inside a carrier file and posts the
 result on a public "board". Built as a single-page static site so it can be hosted
 on GitHub Pages.
 
+Link to the website: https://johncobio.github.io/paper_trail/register.html
+
 ## what's in it
 
 - `index.html` &mdash; public board (anyone can view)
@@ -39,48 +41,11 @@ The assignment mentioned "L = 8, then 16, then 28, then 8 again" &mdash; that is
 essentially mode 1 (ramp). I added fib and prime to make the scheme a tiny bit less
 trivially periodic for an attacker running a Chi-square detector.
 
-## running it
 
-Entirely static. Either open `index.html` directly, or serve the folder:
-
-```sh
-# any of these works
-python -m http.server 8080
-# or
-npx http-server .
-```
-
-Then visit `http://localhost:8080`.
-
-## deploying on GitHub Pages
-
-1. Make a new public repo (e.g. `paper_trail`).
-2. Drop the contents of this folder into the repo root.
-3. Commit + push.
-4. Repo Settings &rarr; Pages &rarr; Source: `Deploy from a branch`, Branch: `main`,
-   Folder: `/ (root)`. Save.
-5. Wait ~1 minute. The site will be at
-   `https://<your-github-username>.github.io/paper_trail/`.
 
 No build step, no secrets, nothing to configure. This is why I picked GitHub Pages
 over Azure / UTA.Cloud &mdash; the whole app is a pile of static files.
 
-## limitations (honest list)
-
-- **Accounts are client-side.** localStorage is per-browser. A server-backed auth
-  (Flask + bcrypt, or an OAuth provider) is what you'd want in production. GitHub
-  Pages can't run server code so this is what fits inside the constraint.
-- **The board is per-browser too.** Same reason. If I wanted a shared board I'd add
-  a tiny Firebase / Supabase / jsonbin backend and have the client read/write JSON.
-  I kept it pure-static so the whole thing works offline.
-- **Carrier files should be "raw" formats for visibility.** A `.bmp` or `.wav` is
-  ideal; if you flip bits in a compressed JPEG stream you'll corrupt the decoder.
-  The tool will still embed, but the preview on the board may not render. For the
-  board demo I used `.bmp` screenshots.
-- **4 MB soft limit on posts** so localStorage doesn't blow up (browsers typically
-  give each origin 5&ndash;10 MB).
-- **S, L, C are not stored on the post.** That's intentional &mdash; the point of
-  stego is that the extractor needs the key parameters. Share them out-of-band.
 
 ## files for testing
 
